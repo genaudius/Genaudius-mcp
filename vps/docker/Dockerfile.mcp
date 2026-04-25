@@ -1,0 +1,46 @@
+# ═══════════════════════════════════════════════════════════════════
+# GenAudius MCP Server — Dockerfile
+# Imagen para el VPS Hostinger (genaudius.app)
+# ═══════════════════════════════════════════════════════════════════
+
+FROM python:3.11-slim
+
+# Metadata
+LABEL maintainer="GenAudius <admin@genaudius.app>"
+LABEL description="GenAudius MCP Server — genaudius.app"
+LABEL version="1.0.0"
+
+# Sistema
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Dependencias Python
+COPY mcp/pyproject.toml .
+RUN pip install --no-cache-dir \
+    mcp>=1.0.0 \
+    httpx>=0.27.0 \
+    fastapi>=0.111.0 \
+    uvicorn[standard]>=0.29.0 \
+    python-dotenv>=1.0.0
+
+# Código del MCP
+COPY mcp/genaudius_mcp ./genaudius_mcp
+
+# Script de arranque con HTTP wrapper
+COPY vps/docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+# Logs
+RUN mkdir -p /app/logs
+
+# Usuario no-root
+RUN useradd -r -s /bin/false genaudius && \
+    chown -R genaudius:genaudius /app
+USER genaudius
+
+EXPOSE 8000
+
+ENTRYPOINT ["/entrypoint.sh"]

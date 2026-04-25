@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "genaudius-mcp"
+version = "2.0.0"
+description = "GenAudius MCP Server — motor de creación musical IA con Modal + Cloudflare R2"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "GenAudius" }]
+keywords = ["mcp", "music", "ai", "modal", "cloudflare", "r2", "stable-audio"]
+dependencies = [
+    "mcp>=1.0.0",
+    "httpx>=0.27.0",
+    "motor>=3.3.0",
+]
+
+[project.scripts]
+genaudius-mcp = "genaudius_mcp.server:run"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["genaudius_mcp*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"

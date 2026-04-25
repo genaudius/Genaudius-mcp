@@ -1,0 +1,87 @@
+version: "3.9"
+
+# ═══════════════════════════════════════════════════════════════════
+# GenAudius MCP — VPS Hostinger
+# Dominio: genaudius.app
+#
+# Servicios:
+#   nginx       → HTTPS proxy en genaudius.app / api.genaudius.app
+#   mcp_server  → MCP Server con 26 tools (HTTP mode para el VPS)
+#   certbot     → SSL Let's Encrypt
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: genaudius_nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/genaudius.app.conf:/etc/nginx/conf.d/default.conf:ro
+      - certbot_certs:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+      - nginx_logs:/var/log/nginx
+    depends_on:
+      - mcp_server
+    networks:
+      - genaudius_net
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  mcp_server:
+    build:
+      context: ..
+      dockerfile: vps/docker/Dockerfile.mcp
+    image: genaudius/mcp-server:latest
+    container_name: genaudius_mcp
+    restart: unless-stopped
+    env_file: .env
+    expose:
+      - "8000"
+    networks:
+      - genaudius_net
+    volumes:
+      - mcp_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+  certbot:
+    image: certbot/certbot:latest
+    container_name: genaudius_certbot
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    command: >
+      certonly --webroot
+      --webroot-path=/var/www/certbot
+      --email ${SSL_EMAIL}
+      --agree-tos --no-eff-email --keep-until-expiring
+      -d genaudius.app -d www.genaudius.app -d api.genaudius.app
+    profiles: ["ssl"]
+    networks:
+      - genaudius_net
+
+volumes:
+  certbot_certs:
+  certbot_www:
+  nginx_logs:
+  mcp_logs:
+
+networks:
+  genaudius_net:
+    driver: bridge
