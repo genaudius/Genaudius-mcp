@@ -112,6 +112,7 @@ app.add_middleware(
         "https://genaudius.com",
         "https://www.genaudius.com",
         "https://genaudius.studio",
+        "https://www.genaudius.studio",
         "https://genaudius.app",
     ],
     allow_methods=["GET", "POST", "OPTIONS"],
