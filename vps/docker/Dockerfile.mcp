@@ -1,13 +1,13 @@
 # ═══════════════════════════════════════════════════════════════════
 # GenAudius MCP Server — Dockerfile
-# Imagen para el VPS Hostinger (genaudius.app)
+# Imagen para el VPS Hostinger (genaudius.cloud)
 # ═══════════════════════════════════════════════════════════════════
 
 FROM python:3.11-slim
 
 # Metadata
-LABEL maintainer="GenAudius <admin@genaudius.app>"
-LABEL description="GenAudius MCP Server — genaudius.app"
+LABEL maintainer="GenAudius <admin@genaudius.cloud>"
+LABEL description="GenAudius MCP Server — genaudius.cloud"
 LABEL version="1.0.0"
 
 # Sistema

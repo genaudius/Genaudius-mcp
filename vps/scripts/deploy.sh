@@ -1,7 +1,7 @@
 #!/bin/bash
 # ═══════════════════════════════════════════════════════════════════
 # GenAudius MCP — Deploy Script VPS Hostinger
-# Dominio: genaudius.app
+# Dominio: genaudius.cloud
 #
 # Uso (desde tu máquina local):
 #   chmod +x vps/scripts/deploy.sh
@@ -25,7 +25,7 @@ err()  { echo -e "${RED}[✗]${NC} $1"; exit 1; }
 echo -e "${CYAN}"
 echo "╔══════════════════════════════════════════════════╗"
 echo "║        GenAudius MCP — VPS Deploy               ║"
-echo "║        genaudius.app — Hostinger                ║"
+echo "║        genaudius.cloud — Hostinger                ║"
 echo "╚══════════════════════════════════════════════════╝"
 echo -e "${NC}"
 
@@ -124,7 +124,7 @@ else
 fi
 
 # ── 9. Obtener certificado SSL ────────────────────────────────────
-info "Configurando SSL para genaudius.app..."
+info "Configurando SSL para genaudius.cloud..."
 
 cd "$DEPLOY_DIR/vps"
 
@@ -135,7 +135,7 @@ sleep 5
 # Obtener certificado
 docker-compose --profile ssl run --rm certbot || {
     warn "SSL no pudo configurarse automáticamente."
-    warn "Ejecuta manualmente después de que el DNS de genaudius.app apunte a este VPS:"
+    warn "Ejecuta manualmente después de que el DNS de genaudius.cloud apunte a este VPS:"
     warn "  cd $DEPLOY_DIR/vps && docker-compose --profile ssl run --rm certbot"
 }
 
@@ -167,11 +167,11 @@ sleep 5
 
 if curl -sf "http://localhost/health" > /dev/null 2>&1; then
     log "Health check OK"
-elif curl -sf "https://genaudius.app/health" > /dev/null 2>&1; then
+elif curl -sf "https://genaudius.cloud/health" > /dev/null 2>&1; then
     log "Health check HTTPS OK"
 else
     warn "Health check no responde aún. Espera 30s y prueba manualmente:"
-    warn "  curl https://genaudius.app/health"
+    warn "  curl https://genaudius.cloud/health"
 fi
 
 # ── 13. Configurar renovación automática SSL ──────────────────────
@@ -184,7 +184,7 @@ log "Renovación automática configurada (diaria)"
 info "Configurando systemd service..."
 cat > /etc/systemd/system/genaudius-mcp.service << 'SYSTEMD'
 [Unit]
-Description=GenAudius MCP Server (genaudius.app)
+Description=GenAudius MCP Server (genaudius.cloud)
 After=docker.service
 Requires=docker.service
 
@@ -210,15 +210,15 @@ echo -e "${CYAN}╔════════════════════�
 echo -e "${CYAN}║          ✅ Deploy completado                   ║${NC}"
 echo -e "${CYAN}╚══════════════════════════════════════════════════╝${NC}"
 echo ""
-log "MCP Server:  https://genaudius.app"
-log "API Gateway: https://api.genaudius.app/v1/"
-log "Health:      https://genaudius.app/health"
-log "Docs:        https://genaudius.app/docs"
+log "MCP Server:  https://genaudius.cloud"
+log "API Gateway: https://api.genaudius.cloud/v1/"
+log "Health:      https://genaudius.cloud/health"
+log "Docs:        https://genaudius.cloud/docs"
 echo ""
 info "Logs en tiempo real:    docker-compose -f $DEPLOY_DIR/vps/docker-compose.yml logs -f"
 info "Reiniciar MCP:          systemctl restart genaudius-mcp"
 info "Ver estado:             docker-compose -f $DEPLOY_DIR/vps/docker-compose.yml ps"
 echo ""
 warn "Configura en el SaaS (genaudius.com):"
-warn "  MCP_BASE_URL = https://api.genaudius.app"
+warn "  MCP_BASE_URL = https://api.genaudius.cloud"
 warn "  X-GenAudius-Key = (el valor de GENAUDIUS_API_KEY en el .env)"

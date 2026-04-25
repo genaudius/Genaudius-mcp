@@ -5,7 +5,7 @@ Expone el MCP server como una API HTTP/REST para el VPS.
 El SaaS (genaudius.com) y Claude Desktop llaman a estos endpoints.
 
 Arquitectura en el VPS:
-  Nginx (genaudius.app) → uvicorn → este archivo → tools del MCP
+  Nginx (genaudius.cloud) → uvicorn → este archivo → tools del MCP
 
 Endpoints:
   GET  /health              → estado del servidor
@@ -90,7 +90,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.error(f"⚠️ No se pudo iniciar el motor de memoria: {e}")
 
-    logger.info(f"   Dominio: genaudius.app")
+    logger.info(f"   Dominio: genaudius.cloud")
     logger.info(f"   Versión: {ACTIVE_VERSION}")
     logger.info(f"   Audio:   {AUDIO_URL[:40]}..." if AUDIO_URL else "   Audio:   ⚠️ no configurado")
     logger.info(f"   Gateway: {GATEWAY_URL[:40]}..." if GATEWAY_URL else "   Gateway: ⚠️ no configurado")
@@ -99,7 +99,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="GenAudius MCP API",
-    description="Motor de creación musical IA — genaudius.app",
+    description="Motor de creación musical IA — genaudius.cloud",
     version="1.0.0",
     lifespan=lifespan,
     docs_url="/docs",
@@ -113,7 +113,7 @@ app.add_middleware(
         "https://www.genaudius.com",
         "https://genaudius.studio",
         "https://www.genaudius.studio",
-        "https://genaudius.app",
+        "https://genaudius.cloud",
     ],
     allow_methods=["GET", "POST", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-GenAudius-Key"],
@@ -158,7 +158,7 @@ async def health():
     return {
         "status":  "ok",
         "service": "GenAudius MCP",
-        "domain":  "genaudius.app",
+        "domain":  "genaudius.cloud",
         "version": ACTIVE_VERSION,
         "time":    time.strftime("%Y-%m-%dT%H:%M:%SZ"),
     }

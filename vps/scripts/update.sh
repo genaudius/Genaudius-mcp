@@ -33,8 +33,8 @@ log "Nginx recargado"
 
 # Health check
 sleep 5
-if curl -sf "https://genaudius.app/health" > /dev/null; then
-    log "✅ genaudius.app respondiendo correctamente"
+if curl -sf "https://genaudius.cloud/health" > /dev/null; then
+    log "✅ genaudius.cloud respondiendo correctamente"
 else
     echo "⚠️  Health check falló. Revisa: docker-compose logs mcp_server"
 fi

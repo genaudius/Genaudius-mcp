@@ -1,7 +1,7 @@
 """
 GenAudius SaaS — MCP Client
 ==============================
-Cómo el SaaS en genaudius.com llama al MCP en genaudius.app.
+Cómo el SaaS en genaudius.com llama al MCP en genaudius.cloud.
 
 Instalar en el backend FastAPI del SaaS (genaudius.com / AWS):
   pip install httpx
@@ -14,13 +14,13 @@ import asyncio
 from typing import Any, Optional
 
 # ── Config (variables de entorno en AWS) ──────────────────────────
-MCP_BASE_URL = "https://api.genaudius.app"   # genaudius.app VPS
+MCP_BASE_URL = "https://api.genaudius.cloud"   # genaudius.cloud VPS
 MCP_API_KEY  = "tu-api-key-privada"          # GENAUDIUS_API_KEY del VPS
 
 
 class GenAudiusMCPClient:
     """
-    Cliente para llamar al MCP de genaudius.app desde el SaaS en genaudius.com.
+    Cliente para llamar al MCP de genaudius.cloud desde el SaaS en genaudius.com.
 
     Uso en el backend FastAPI del SaaS:
 
@@ -340,7 +340,7 @@ class GenAudiusBatch:
 # ── Ejemplo de uso ────────────────────────────────────────────────
 async def ejemplo():
     mcp = GenAudiusMCPClient(
-        base_url="https://api.genaudius.app",
+        base_url="https://api.genaudius.cloud",
         api_key="tu-api-key",
     )
 

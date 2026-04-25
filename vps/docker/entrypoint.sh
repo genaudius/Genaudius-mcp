@@ -7,7 +7,7 @@
 
 set -e
 
-echo "🎵 GenAudius MCP Server — genaudius.app"
+echo "🎵 GenAudius MCP Server — genaudius.cloud"
 echo "   Version: ${GENAUDIUS_VERSION:-GenAudius_V1}"
 echo "   Starting HTTP wrapper..."
 
