@@ -57,6 +57,7 @@ GENRE_LIST = ["bachata", "rock", "pop", "salsa", "reggaeton", "jazz", "lofi", "e
 def _headers():
     return {
         "Authorization": f"Bearer {MODAL_TOKEN}",
+        "X-API-Key": MCP_API_KEY,
         "Content-Type": "application/json",
         "X-GenAudius-Source": "mcp-v3",
     }
@@ -866,20 +867,20 @@ async def _full_production(client, args):
 
 
 async def _system_status(client):
-    resp = await client.get(f"{AUDIO_URL}/status", headers=_headers(), timeout=30)
+    # Intentar llamar a la raíz del dominio para salud general
+    base_domain = AUDIO_URL.replace("/api/music", "")
+    resp = await client.get(base_domain, headers=_headers(), timeout=30)
     resp.raise_for_status()
     d = resp.json()
-    t  = "📊 **Estado GenAudius**\n\n"
-    t += f"**Versión activa:** `{d.get('active_version')}`\n"
-    t += f"**Re-trains pendientes:** {d.get('pending_retrain', 0)}\n\n"
-    t += f"🎶 Audio: `{AUDIO_URL}`\n"
-    t += f"🖼️ Imagen: `{IMAGE_URL}`\n"
-    t += f"🎬 Video: `{VIDEO_URL}`\n\n"
-    for ver, info in d.get("versions", {}).items():
-        t += f"{'✅' if info.get('ready') else '⚠️'} **{ver}** — {info.get('description', '')}\n"
+    t  = "📊 **Estado GenAudius Pro (AWS)**\n\n"
+    t += f"**Status:** `{d.get('status')}`\n"
+    t += f"**Engine:** `{d.get('engine')}`\n"
+    t += f"**Versión:** `{d.get('version')}`\n\n"
+    t += f"🗄️ **Databases:**\n"
+    for db, state in d.get("databases", {}).items():
+        t += f"  - {db.capitalize()}: `{state}`\n"
+    t += f"\n🎶 Audio URL: `{AUDIO_URL}`\n"
     return [types.TextContent(type="text", text=t)]
-
-
 async def _list_versions(client):
     resp = await client.get(f"{AUDIO_URL}/versions", headers=_headers(), timeout=30)
     resp.raise_for_status()
