@@ -36,30 +36,29 @@ from mcp import types
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("genaudius-mcp")
 
-MCP_API_KEY    = os.environ.get("GENAUDIUS_API_KEY", "")
-AUDIO_URL      = os.environ.get("MODAL_AUDIO_URL", "")
+# GenAudius Engine v1.0 (RunPod / Local / VPS)
+API_BASE_URL   = os.environ.get("GENAUDIUS_API_BASE_URL", "https://api.genaudius.studio")
+MCP_API_KEY    = os.environ.get("GENAUDIUS_API_KEY", "") # Key used to call the MCP
+GAU_API_KEY    = os.environ.get("GAU_API_KEY", "gau_master_secure_2026") # Key used to call the Engine
+TIMEOUT        = int(os.environ.get("TIME_OUT_SECONDS", "600"))
+ACTIVE_VERSION = os.environ.get("GENAUDIUS_VERSION", "MusicGAU-V1")
+AUTH_LOGIN_URL = os.environ.get("GENAUDIUS_AUTH_URL", "").strip()
+
+# Legacy URLs (for backward compatibility if needed)
+AUDIO_URL      = os.environ.get("MODAL_AUDIO_URL", f"{API_BASE_URL}/api/v1")
+STEMS_URL      = os.environ.get("MODAL_STEMS_URL", f"{API_BASE_URL}/api/v1/vocal-removal")
+MIDI_URL       = os.environ.get("MODAL_MIDI_URL", f"{API_BASE_URL}/api/v1")
 IMAGE_URL      = os.environ.get("MODAL_IMAGE_URL", "")
 VIDEO_URL      = os.environ.get("MODAL_VIDEO_URL", "")
-COMPOSER_URL   = os.environ.get("MODAL_COMPOSER_URL", "")
 CHATGAU_URL    = os.environ.get("MODAL_CHATGAU_URL", "")
-STEMS_URL      = os.environ.get("MODAL_STEMS_URL", "")
-MIDI_URL       = os.environ.get("MODAL_MIDI_URL", "")
-BUILDER_URL    = os.environ.get("MODAL_BUILDER_URL", "")
-ANALYTICS_URL  = os.environ.get("MODAL_ANALYTICS_URL", "")
-GATEWAY_URL    = os.environ.get("MODAL_GATEWAY_URL", "")
-MODAL_TOKEN    = os.environ.get("MODAL_WEBHOOK_TOKEN", "")
-ACTIVE_VERSION = os.environ.get("GENAUDIUS_VERSION", "GenAudius_V1")
-TIMEOUT        = int(os.environ.get("TIME_OUT_SECONDS", "600"))
-AUTH_LOGIN_URL = os.environ.get("GENAUDIUS_AUTH_URL", "").strip()
 
 GENRE_LIST = ["bachata", "rock", "pop", "salsa", "reggaeton", "jazz", "lofi", "electronic"]
 
 def _headers():
     return {
-        "Authorization": f"Bearer {MODAL_TOKEN}",
-        "X-API-Key": MCP_API_KEY,
+        "x-api-key": GAU_API_KEY,
         "Content-Type": "application/json",
-        "X-GenAudius-Source": "mcp-v3",
+        "X-GenAudius-Source": "mcp-v7-engine-v1",
     }
 
 app = Server("genaudius-mcp")
@@ -711,23 +710,22 @@ async def _gen_audio(client, args, mode):
     payload = {
         "prompt": prompt,
         "version": args.get("version", ACTIVE_VERSION),
-        "seconds_total": args.get("seconds_total", 60 if mode == "bgm" else 30),
-        "steps": args.get("steps", 80 if mode == "bgm" else 100),
-        "cfg_scale": args.get("cfg_scale", 5.0 if mode == "bgm" else 6.0),
-        "seed": args.get("seed", -1),
-        "upload_to_r2": True,
+        "make_instrumental": True if mode == "bgm" else False,
     }
-    resp = await client.post(f"{AUDIO_URL}/generate", json=payload, headers=_headers())
+    
+    endpoint = f"{API_BASE_URL}/api/v1/generate"
+    resp = await client.post(endpoint, json=payload, headers=_headers())
     resp.raise_for_status()
     d = resp.json()
+    
     icon = "🎶" if mode == "song" else "🎼"
-    t  = f"{icon} **{'Canción' if mode == 'song' else 'BGM'} generada — {payload['version']}**\n\n"
-    t += f"**Duración:** {d.get('seconds_total')}s | **Steps:** {d.get('steps')}\n\n"
-    if d.get("audio_url"):
-        t += f"🔗 **Descargar WAV** (2h):\n{d['audio_url']}\n\n"
-    if d.get("r2_key"):
-        t += f"📦 `audio_r2_key: {d['r2_key']}`\n"
-        t += "\n💡 Usa este key con `generate_cover_art` + `generate_video`, o usa `create_full_production` directamente."
+    t  = f"{icon} **GenAudius {mode.title()} — Tarea enviada**\n\n"
+    if d.get("data") and d["data"].get("taskId"):
+        t += f"**Task ID:** `{d['data']['taskId']}`\n"
+        t += f"**Estado:** {d['data'].get('status', 'submitted')}\n\n"
+        t += f"💡 Usa `get_record_info` para ver el progreso."
+    else:
+        t += f"Error: {d.get('msg', 'Respuesta inesperada')}"
     return [types.TextContent(type="text", text=t)]
 
 
@@ -866,20 +864,19 @@ async def _full_production(client, args):
     return [types.TextContent(type="text", text=t)]
 
 
-async def _system_status(client):
-    # Intentar llamar a la raíz del dominio para salud general
-    base_domain = AUDIO_URL.replace("/api/music", "")
-    resp = await client.get(base_domain, headers=_headers(), timeout=30)
-    resp.raise_for_status()
-    d = resp.json()
-    t  = "📊 **Estado GenAudius Pro (AWS)**\n\n"
-    t += f"**Status:** `{d.get('status')}`\n"
-    t += f"**Engine:** `{d.get('engine')}`\n"
-    t += f"**Versión:** `{d.get('version')}`\n\n"
-    t += f"🗄️ **Databases:**\n"
-    for db, state in d.get("databases", {}).items():
-        t += f"  - {db.capitalize()}: `{state}`\n"
-    t += f"\n🎶 Audio URL: `{AUDIO_URL}`\n"
+async def _system_status(client: httpx.AsyncClient) -> list[types.TextContent]:
+    # Check Engine v1.0 credits/status
+    try:
+        resp = await client.get(f"{API_BASE_URL}/api/v1/chat/credit", headers=_headers())
+        d = resp.json()
+        status_txt = f"✅ **GenAudius Engine v1.0:** Online\n💰 **Créditos:** {d.get('data', 'N/A')}"
+    except Exception:
+        status_txt = "❌ **GenAudius Engine v1.0:** Offline"
+        
+    t  = f"📊 **GenAudius MCP — Estado del Sistema**\n\n"
+    t += f"{status_txt}\n"
+    t += f"🌍 **API Base:** {API_BASE_URL}\n"
+    t += f"🏷️ **Versión Activa:** {ACTIVE_VERSION}\n"
     return [types.TextContent(type="text", text=t)]
 async def _list_versions(client):
     resp = await client.get(f"{AUDIO_URL}/versions", headers=_headers(), timeout=30)
@@ -1166,45 +1163,50 @@ async def _chatgau_trigger_training(args: dict) -> list[types.TextContent]:
 
 
 async def _separate_stems(client: httpx.AsyncClient, args: dict) -> list[types.TextContent]:
+    # Support for both file uploads (multipart) and R2 keys (legacy)
+    audio_url = args.get("audio_url")
+    if not audio_url:
+        return [types.TextContent(type="text", text="❌ Proporciona `audio_url` para la separación.")]
+
     payload = {
-        "audio_r2_key": args["audio_r2_key"],
-        "model":        args.get("model", "htdemucs_ft"),
-        "stems":        args.get("stems", ["vocals", "drums", "bass", "other"]),
-        "version":      args.get("version", ACTIVE_VERSION),
+        "audio_url": audio_url,
+        "model":     args.get("model", "htdemucs"),
+        "version":   args.get("version", ACTIVE_VERSION),
     }
-    resp = await client.post(f"{STEMS_URL}/separate", json=payload, headers=_headers())
+    
+    # In the new Engine v1.0, we call /api/v1/vocal-removal/generate
+    endpoint = f"{API_BASE_URL}/api/v1/vocal-removal/generate"
+    resp = await client.post(endpoint, json=payload, headers=_headers())
     resp.raise_for_status()
     d = resp.json()
-    t  = f"🎚️ **Stems separados — {d.get('model', '')}**\n\n"
-    for stem, url in d.get("stems", {}).items():
-        t += f"**{stem.title()}:** {url}\n"
-    t += f"\n📦 R2 keys:\n"
-    for stem, key in d.get("stem_r2_keys", {}).items():
-        t += f"  {stem}: `{key}`\n"
-    t += "\n💡 Descarga cada stem y úsalos en tu DAW (Ableton, FL Studio, GarageBand)."
+    
+    t  = f"🎚️ **GenAudius Stems — Tarea enviada**\n\n"
+    t += f"**Task ID:** `{d['data']['taskId']}`\n"
+    t += f"**Estado:** {d['data']['status']}\n\n"
+    t += "💡 Usa `get_record_info` con el taskId para obtener los enlaces de descarga cuando termine."
     return [types.TextContent(type="text", text=t)]
 
 
 async def _export_midi(client: httpx.AsyncClient, args: dict) -> list[types.TextContent]:
+    audio_url = args.get("audio_url")
+    if not audio_url:
+        return [types.TextContent(type="text", text="❌ Proporciona `audio_url` para la transcripción MIDI.")]
+
     payload = {
-        "audio_r2_key":        args["audio_r2_key"],
-        "onset_threshold":     args.get("onset_threshold", 0.5),
-        "minimum_note_length": args.get("minimum_note_length", 0.05),
-        "generate_piano_roll": args.get("generate_piano_roll", True),
-        "version":             args.get("version", ACTIVE_VERSION),
+        "audio_url": audio_url,
+        "version":   args.get("version", ACTIVE_VERSION),
     }
-    resp = await client.post(f"{MIDI_URL}/to-midi", json=payload, headers=_headers())
+    
+    # In the new Engine v1.0, we call /api/v1/midi
+    endpoint = f"{API_BASE_URL}/api/v1/midi"
+    resp = await client.post(endpoint, json=payload, headers=_headers())
     resp.raise_for_status()
     d = resp.json()
-    t  = f"🎹 **MIDI exportado**\n\n"
-    files = d.get("files", {})
-    if files.get("midi"):
-        t += f"🎵 **Archivo MIDI:** {files['midi']}\n"
-    if files.get("piano_roll"):
-        t += f"🖼️ **Piano Roll PNG:** {files['piano_roll']}\n"
-    if files.get("notes_csv"):
-        t += f"📊 **Notas CSV:** {files['notes_csv']}\n"
-    t += f"\n💡 {d.get('daw_tip', '')}"
+    
+    t  = f"🎹 **GenAudius MIDI — Tarea enviada**\n\n"
+    t += f"**Task ID:** `{d['data']['taskId']}`\n"
+    t += f"**Estado:** {d['data']['status']}\n\n"
+    t += "💡 El sistema extraerá la melodía y el bajo automáticamente."
     return [types.TextContent(type="text", text=t)]
 
 

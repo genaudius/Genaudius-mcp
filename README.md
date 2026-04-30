@@ -28,9 +28,14 @@ Repositorio de trabajo para **GenAudius / GAU**: el **servidor MCP** vive aquí 
 ```
 
 - **MCP (`mcp/`)**: herramientas para generación, stems, MIDI, Composer Lyric y **ChatGAU** (soporte general).
-- **ChatGAU (`chatgau/`)**: dataset y scripts del asistente de soporte; expuesto vía `modal/chatgau_api.py` (URL `MODAL_CHATGAU_URL`).
-- **Modal (`modal/`)**: apps de inferencia y entrenamiento; despliegue con `modal deploy`.
+- **Engine v1.0**: Soporte nativo para **RunPod** y ejecución local; compatible con la API de Kie/Suno.
 - **VPS (`vps/`)**: instrucciones para systemd, variables de entorno y despliegue en Hostinger.
+
+## Variables de Entorno (IMPORTANTE)
+Para que el MCP funcione con el nuevo motor:
+- `GENAUDIUS_API_BASE_URL`: URL de tu API (ej: `https://api.genaudius.studio`).
+- `GAU_API_KEY`: Tu llave maestra de seguridad (definida en el motor).
+- `GENAUDIUS_API_KEY`: Llave para autenticar el acceso al MCP.
 
 ## Instalación del MCP (en el VPS)
 
