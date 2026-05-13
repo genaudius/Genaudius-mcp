@@ -52,7 +52,7 @@ IMAGE_URL      = os.environ.get("MODAL_IMAGE_URL", "")
 VIDEO_URL      = os.environ.get("MODAL_VIDEO_URL", "")
 CHATGAU_URL    = os.environ.get("MODAL_CHATGAU_URL", "")
 
-GENRE_LIST = ["bachata", "rock", "pop", "salsa", "reggaeton", "jazz", "lofi", "electronic"]
+GENRE_LIST = ["bachata", "salsa", "merengue", "reggaeton", "dembow", "bolero", "rock", "pop", "jazz", "lofi", "electronic"]
 
 def _headers():
     return {
@@ -550,6 +550,71 @@ async def list_tools() -> list[types.Tool]:
                 },
             },
         ),
+        # ── MIDI LIBRARY RAG ──────────────────────────────────────────────────
+        types.Tool(
+            name="midi_library_index_midi",
+            description="📚 Indexa un archivo MIDI existente en la librería RAG para búsqueda semántica.",
+            inputSchema={
+                "type": "object",
+                "required": ["midi_path", "title"],
+                "properties": {
+                    "midi_path":  {"type": "string", "description": "Ruta local o URL al archivo MIDI"},
+                    "title":      {"type": "string"},
+                    "genre":      {"type": "string", "enum": GENRE_LIST},
+                    "bpm":        {"type": "number"},
+                    "instrument": {"type": "string"},
+                },
+            },
+        ),
+        types.Tool(
+            name="midi_library_index_wav",
+            description="🚀 Pipeline completo: Transcribe audio WAV a MIDI e indexa en la librería RAG. Proceso asíncrono.",
+            inputSchema={
+                "type": "object",
+                "required": ["wav_path", "title"],
+                "properties": {
+                    "wav_path": {"type": "string", "description": "Ruta local o URL al archivo WAV"},
+                    "title":    {"type": "string"},
+                    "genre":    {"type": "string", "enum": GENRE_LIST},
+                    "bpm":      {"type": "number"},
+                },
+            },
+        ),
+        types.Tool(
+            name="midi_library_search",
+            description="🔍 Busca patrones musicales, melodías o estilos en la librería RAG usando lenguaje natural.",
+            inputSchema={
+                "type": "object",
+                "required": ["query"],
+                "properties": {
+                    "query":      {"type": "string", "description": "Ej: 'bajo de bachata sincopado'"},
+                    "genre":      {"type": "string", "enum": GENRE_LIST},
+                    "instrument": {"type": "string"},
+                    "limit":      {"type": "integer", "default": 5},
+                },
+            },
+        ),
+        types.Tool(
+            name="midi_library_stats",
+            description="📊 Obtiene estadísticas de la librería indexada (total de canciones, géneros, etc).",
+            inputSchema={"type": "object", "properties": {}},
+        ),
+        # ── N8N / MAESTRO ─────────────────────────────────────────────────────
+        types.Tool(
+            name="trigger_maestro",
+            description=(
+                "🚀 Dispara el Maestro Universal Pipeline en n8n. "
+                "Úsalo para orquestar tareas complejas de producción, indexación RAG y flujos multi-paso."
+            ),
+            inputSchema={
+                "type": "object",
+                "required": ["task"],
+                "properties": {
+                    "task":   {"type": "string", "description": "Nombre de la tarea (ej: 'generate_music', 'index_midi')"},
+                    "params": {"type": "object", "description": "Parámetros adicionales para el workflow"},
+                },
+            },
+        ),
     ]
 
 
@@ -572,6 +637,10 @@ _URL_FOR_TOOL: dict[str, tuple[str, str]] = {
     "chatgau_quick": ("MODAL_CHATGAU_URL", CHATGAU_URL),
     "chatgau_add_knowledge": ("MODAL_CHATGAU_URL", CHATGAU_URL),
     "chatgau_status": ("MODAL_CHATGAU_URL", CHATGAU_URL),
+    "midi_library_index_midi": ("MODAL_MIDI_URL", MIDI_URL),
+    "midi_library_index_wav": ("MODAL_MIDI_URL", MIDI_URL),
+    "midi_library_search": ("MODAL_MIDI_URL", MIDI_URL),
+    "midi_library_stats": ("MODAL_MIDI_URL", MIDI_URL),
 }
 
 
@@ -625,6 +694,12 @@ async def call_tool(name: str, arguments: dict[str, Any]) -> list[types.TextCont
                 # ── Memoria GAU ───────────────────────────────────────────────
                 case "store_user_memory":         return await _store_user_memory(arguments)
                 case "get_user_memories":          return await _get_user_memories(arguments)
+                # ── MIDI Library RAG ──────────────────────────────────────────
+                case "midi_library_index_midi":   return await _midi_index_midi(client, arguments)
+                case "midi_library_index_wav":    return await _midi_index_wav(client, arguments)
+                case "midi_library_search":       return await _midi_search(client, arguments)
+                case "midi_library_stats":        return await _midi_stats(client)
+                case "trigger_maestro":           return await _trigger_maestro(arguments)
                 case _:
                     return [types.TextContent(type="text", text=f"❌ Tool desconocida: {name}")]
         except TimeoutError as e:
@@ -1312,3 +1387,86 @@ async def _get_user_memories(args: dict) -> list[types.TextContent]:
             t += f"  _Meta: {json.dumps(m['metadata'])}_\n"
             
     return [types.TextContent(type="text", text=t)]
+
+
+# ── MIDI Library Handlers ─────────────────────────────────────────────────────
+
+async def _midi_index_midi(client: httpx.AsyncClient, args: dict) -> list[types.TextContent]:
+    payload = {
+        "midi_path":  args["midi_path"],
+        "title":      args["title"],
+        "genre":      args.get("genre", ""),
+        "bpm":        args.get("bpm", 0),
+        "instrument": args.get("instrument", ""),
+    }
+    endpoint = f"{API_BASE_URL}/api/midi-library/index-midi"
+    resp = await client.post(endpoint, json=payload, headers=_headers())
+    resp.raise_for_status()
+    d = resp.json()
+    t = f"📚 **MIDI Indexado**\n\n**Título:** {args['title']}\n**Status:** {d.get('status', 'ok')}"
+    return [types.TextContent(type="text", text=t)]
+
+
+async def _midi_index_wav(client: httpx.AsyncClient, args: dict) -> list[types.TextContent]:
+    payload = {
+        "wav_path": args["wav_path"],
+        "title":    args["title"],
+        "genre":    args.get("genre", ""),
+        "bpm":      args.get("bpm", 0),
+    }
+    endpoint = f"{API_BASE_URL}/api/midi-library/index-wav"
+    resp = await client.post(endpoint, json=payload, headers=_headers())
+    resp.raise_for_status()
+    d = resp.json()
+    t = f"🚀 **WAV Pipeline Iniciado**\n\n**Job ID:** `{d.get('job_id')}`\n**Mensaje:** {d.get('message')}\n\nConsulta el progreso con el Job ID."
+    return [types.TextContent(type="text", text=t)]
+
+
+async def _midi_search(client: httpx.AsyncClient, args: dict) -> list[types.TextContent]:
+    params = {
+        "query":      args["query"],
+        "genre":      args.get("genre"),
+        "instrument": args.get("instrument"),
+        "limit":      args.get("limit", 5),
+    }
+    endpoint = f"{API_BASE_URL}/api/midi-library/search"
+    resp = await client.get(endpoint, params=params, headers=_headers())
+    resp.raise_for_status()
+    d = resp.json()
+    
+    t = f"🔍 **Resultados de búsqueda: '{args['query']}'**\n\n"
+    for r in d.get("results", []):
+        t += f"• **{r.get('title', 'Sin título')}** ({r.get('genre', 'N/A')})\n"
+        t += f"  ID: `{r.get('song_id')}` | Distancia: {r.get('distance', 0):.4f}\n"
+    return [types.TextContent(type="text", text=t)]
+
+
+async def _midi_stats(client: httpx.AsyncClient) -> list[types.TextContent]:
+    endpoint = f"{API_BASE_URL}/api/midi-library/stats"
+    resp = await client.get(endpoint, headers=_headers())
+    resp.raise_for_status()
+    d = resp.json()
+    t = f"📊 **Estadísticas de la Librería RAG**\n\n```json\n{json.dumps(d, indent=2)}\n```"
+    return [types.TextContent(type="text", text=t)]
+
+
+# ── N8N / Maestro Handlers ────────────────────────────────────────────────────
+
+async def _trigger_maestro(args: dict) -> list[types.TextContent]:
+    """
+    Triggers the Maestro Universal Pipeline via n8n.
+    """
+    from datetime import datetime
+    url = os.environ.get("N8N_WEBHOOK_URL", "https://data.genaudius.studio/webhook/maestro-trigger")
+    payload = {
+        "task": args["task"],
+        "params": args.get("params", {}),
+        "timestamp": datetime.now().isoformat()
+    }
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.post(url, json=payload, timeout=30.0)
+            resp.raise_for_status()
+            return [types.TextContent(type="text", text=f"✅ Maestro pipeline disparado: {resp.status_code}\n\nURL: {url}")]
+    except Exception as e:
+        return [types.TextContent(type="text", text=f"❌ Error al disparar Maestro: {str(e)}")]

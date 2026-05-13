@@ -1,0 +1,59 @@
+{
+  "genre_profiles": {
+    "bachata_moderna": {
+      "percussion": {
+        "guira": {
+          "eq": { "hpf": 400, "boost_10khz": 4 },
+          "compression": { "attack": "fast", "ratio": 4 }
+        },
+        "bongo_conga": {
+          "eq": { "cut_300hz": -3, "boost_3khz": 3 },
+          "compression": { "attack": "medium", "release": "auto" }
+        },
+        "kick": {
+          "eq": { "boost_60hz": 3, "boost_4khz": 4 },
+          "sidechain": { "target": "bass", "reduction_db": 2 }
+        }
+      },
+      "harmony": {
+        "requinto": {
+          "eq": { "shimmer_12khz": 3, "cut_250hz": -2 },
+          "fx": { "chorus": "soft", "delay": "slapback" }
+        },
+        "piano_pads": {
+          "panning": "hard_lr",
+          "eq": { "hpf": 150 }
+        },
+        "bass": {
+          "compression": { "ratio": 4, "threshold": -18 },
+          "saturation": "valve_subtle"
+        }
+      },
+      "vocals": {
+        "lead": {
+          "compression": "serial_soft",
+          "deesser": "aggressive"
+        },
+        "whisper": {
+          "eq": { "hpf": 500, "air_15khz": 6 },
+          "stereo_width": "ultra_wide"
+        }
+      }
+    },
+    "symphonic": {
+      "spatiality": {
+        "reverb": "large_hall",
+        "positioning": "depth_layered"
+      },
+      "mastering": {
+        "lufs_target": -14
+      }
+    }
+  },
+  "mastering_chain": {
+    "linear_phase_eq": { "hpf": 30, "cut_250hz": -1, "high_shelf_12khz": 1.5 },
+    "glue_compressor": { "attack": "slow", "release": "auto", "max_reduction": 2 },
+    "stereo_image": { "mono_below_hz": 120, "wide_above_khz": 5 },
+    "limiter": { "ceiling": -1.0, "true_peak": true }
+  }
+}

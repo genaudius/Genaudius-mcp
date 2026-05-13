@@ -45,6 +45,7 @@ from genaudius_mcp.server import (
     _system_status, _list_versions,
     _upload_audio, _trigger_training,
     _store_user_memory, _get_user_memories,
+    _midi_index_midi, _midi_index_wav, _midi_search, _midi_stats,
     ACTIVE_VERSION, TIMEOUT, _headers,
     AUDIO_URL, IMAGE_URL, VIDEO_URL, COMPOSER_URL,
     CHATGAU_URL, STEMS_URL, MIDI_URL, BUILDER_URL,
@@ -224,6 +225,11 @@ TOOL_DISPATCH = {
     # Memoria GAU
     "store_user_memory":        lambda c, a: _store_user_memory(a),
     "get_user_memories":         lambda c, a: _get_user_memories(a),
+    # MIDI Library RAG
+    "midi_library_index_midi":   lambda c, a: _midi_index_midi(c, a),
+    "midi_library_index_wav":    lambda c, a: _midi_index_wav(c, a),
+    "midi_library_search":       lambda c, a: _midi_search(c, a),
+    "midi_library_stats":        lambda c, a: _midi_stats(c),
 }
 
 @app.post("/tool/{tool_name}")

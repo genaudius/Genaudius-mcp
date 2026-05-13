@@ -1,0 +1,113 @@
+{
+  "name": "MusicGAU - Percussion Cluster PoC",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "trigger-percussion",
+        "options": {}
+      },
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://maestro-api:5678/api/maestro/chat",
+        "method": "POST",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "messages",
+              "value": "=[{\"role\": \"user\", \"content\": $json.body.prompt}]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Maestro Agent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [620, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://maestro-api:5678/search",
+        "method": "POST",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "query",
+              "value": "={{$json.clusters.percussion.directive}}"
+            },
+            {
+              "name": "instrument",
+              "value": "percussion"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "RAG Percussion Search",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4,
+      "position": [840, 300]
+    },
+    {
+      "parameters": {
+        "model": "gpt-4o",
+        "messages": {
+          "message": [
+            {
+              "role": "system",
+              "content": "Eres el Agente de Percusión. Usa los patrones RAG para generar ABC."
+            },
+            {
+              "content": "={{$node[\"Maestro Agent\"].json.clusters.percussion.directive}}\n\nContexto RAG:\n{{$json.results}}"
+            }
+          ]
+        }
+      },
+      "name": "Percussion Agent (GPT-4o)",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [1060, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Maestro Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Maestro Agent": {
+      "main": [
+        [
+          {
+            "node": "RAG Percussion Search",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RAG Percussion Search": {
+      "main": [
+        [
+          {
+            "node": "Percussion Agent (GPT-4o)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}

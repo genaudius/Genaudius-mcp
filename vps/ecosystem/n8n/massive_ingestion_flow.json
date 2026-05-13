@@ -1,0 +1,118 @@
+{
+  "name": "MusicGAU - Massive Ingestion",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/storage/ingesta",
+        "options": {}
+      },
+      "name": "Local File Trigger",
+      "type": "n8n-nodes-base.localFileTrigger",
+      "typeVersion": 1,
+      "position": [440, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.extension}}",
+              "value2": "pdf"
+            }
+          ]
+        }
+      },
+      "name": "Is PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [660, 300]
+    },
+    {
+      "parameters": {
+        "operation": "extractText",
+        "binaryPropertyName": "data"
+      },
+      "name": "Read PDF",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [880, 200]
+    },
+    {
+      "parameters": {
+        "command": "=python3 /app/scripts/n8n_music_processor.py midi --midi \"{{$json.fileAbsolutePath}}\" --genre bachata --title \"{{$json.fileName}}\""
+      },
+      "name": "Process MIDI",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [880, 400]
+    },
+    {
+      "parameters": {
+        "model": "text-embedding-3-small",
+        "text": "={{$json.text || $json.output.abc_notation}}"
+      },
+      "name": "Vector Store (Supabase)",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [1140, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-creds-id"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Local File Trigger": {
+      "main": [
+        [
+          {
+            "node": "Is PDF?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is PDF?": {
+      "main": [
+        [
+          {
+            "node": "Read PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Process MIDI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read PDF": {
+      "main": [
+        [
+          {
+            "node": "Vector Store (Supabase)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process MIDI": {
+      "main": [
+        [
+          {
+            "node": "Vector Store (Supabase)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
